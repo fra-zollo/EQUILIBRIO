@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNBALANCED | Simpler Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --apple-bg: #fbfbfd;
+            --apple-text: #1d1d1f;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--apple-bg);
+            color: var(--apple-text);
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars for full screen canvas */
+            -webkit-font-smoothing: antialiased;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .ui-layer {
+            position: relative;
+            z-index: 10;
+        }
+        /* Glassmorphism for the legend */
+        .glass-panel {
+            background: rgba(251, 251, 253, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="w-full h-screen flex flex-col justify-between">
+
+    <!-- UI Overlay (Top) -->
+    <header class="ui-layer p-8 md:px-12 md:pt-12 max-w-4xl">
+        <h2 class="text-[#86868b] font-semibold tracking-widest uppercase text-xs mb-2">UNBALANCED: Italia</h2>
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tighter mb-4">1. 100 Punti. Il 100% della Ricchezza.</h1>
+        <p class="text-lg text-[#86868b] max-w-xl leading-relaxed">
+            Ognuno dei 100 punti in movimento rappresenta l'1% della popolazione italiana. 
+            La <strong>dimensione</strong> del punto rappresenta la loro quota della ricchezza totale della nazione. 
+            Muovi il mouse per interagire con l'economia.
+        </p>
+    </header>
+
+    <!-- Canvas Container (Middle) -->
+    <div id="canvas-container" class="mb-4">
+        <canvas id="vizCanvas"></canvas>
+    </div>
+
+    <!-- Cluster Labels (Posizionate sotto il canvas, fisse e ordinate) -->
+    <div class="ui-layer w-full flex justify-between px-2 md:px-12 pb-8 max-w-7xl mx-auto gap-4">
+        
+        <!-- Bottom 50% Label -->
+        <div class="w-1/3 text-center">
+            <h3 class="font-bold text-sm md:text-xl text-[#1d1d1f]">I 50 più poveri</h3>
+            <p class="text-xs md:text-base text-[#86868b] mt-2 leading-tight md:leading-relaxed">
+                Rappresentano metà della popolazione, ma si spartiscono le briciole: solo il <strong>7,4%</strong> della ricchezza totale.
+            </p>
+        </div>
+        
+        <!-- Middle 40% Label -->
+        <div class="w-1/3 text-center border-l border-r border-gray-200 px-2">
+            <h3 class="font-bold text-sm md:text-xl text-[#1d1d1f]">I 40 del ceto medio</h3>
+            <p class="text-xs md:text-base text-[#86868b] mt-2 leading-tight md:leading-relaxed">
+                La classe media detiene il <strong>32,6%</strong>. Lavorano per mantenere l'equilibrio del Paese.
+            </p>
+        </div>
+        
+        <!-- Top 10% Label -->
+        <div class="w-1/3 text-center">
+            <h3 class="font-bold text-sm md:text-xl text-[#1d1d1f]">I 10 più ricchi</h3>
+            <p class="text-xs md:text-base text-[#1d1d1f] mt-2 leading-tight md:leading-relaxed font-medium">
+                Controllano il <strong>60%</strong>. Da soli, questi 10 possiedono quasi il doppio della ricchezza degli altri 90 messi insieme.
+            </p>
+        </div>
+
+    </div>
+
+    <!-- UI Overlay (Bottom / Legend) -->
+    <div class="ui-layer p-4 md:p-8 w-full flex justify-center pb-8 md:pb-12">
+        <div class="glass-panel px-6 py-4 flex flex-col md:flex-row gap-6 md:gap-12 items-center shadow-sm">
+            
+            <div class="flex items-center gap-3">
+                <div class="w-4 h-4 rounded-full bg-[#1d1d1f]"></div>
+                <div>
+                    <div class="text-sm font-bold">I più ricchi</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="w-4 h-4 rounded-full bg-[#86868b]"></div>
+                <div>
+                    <div class="text-sm font-bold">Classe media</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="w-4 h-4 rounded-full border-2 border-[#c7c7cc] bg-[#e5e5ea]"></div>
+                <div>
+                    <div class="text-sm font-bold">I più poveri</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Physics & Animation Script -->
+    <script>
+        const canvas = document.getElementById('vizCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        // Mouse interaction
+        let mouse = { x: -1000, y: -1000, radius: 100 }; 
+        
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        window.addEventListener('mouseout', () => {
+            mouse.x = -1000;
+            mouse.y = -1000;
+        });
+
+        // Data configuration
+        let scaleFactor = 180; 
+
+        const groups = [
+            // Allineati esattamente con le 3 colonne di testo sottostanti (16%, 50%, 84%)
+            // Aumentato il contrasto del grigio chiaro per i più poveri
+            { count: 50, wealthRatio: 0.148, color: '#e5e5ea', border: '#c7c7cc', alignX: 0.166 }, 
+            { count: 40, wealthRatio: 0.815, color: '#86868b', alignX: 0.500 }, 
+            { count: 10, wealthRatio: 6.000, color: '#1d1d1f', alignX: 0.833 }  
+        ];
+
+        let dots = [];
+
+        // Resize handler
+        function resize() {
+            const container = document.getElementById('canvas-container');
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // Make dots smaller on mobile to prevent overlapping clusters
+            scaleFactor = width < 768 ? 60 : 180;
+
+            if (dots.length > 0) {
+                dots.forEach(dot => {
+                    dot.radius = Math.sqrt(dot.group.wealthRatio * scaleFactor);
+                    dot.mass = dot.radius;
+                });
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Dot {
+            constructor(group) {
+                this.group = group;
+                this.radius = Math.sqrt(group.wealthRatio * scaleFactor);
+                
+                this.x = (width * group.alignX) + (Math.random() - 0.5) * 60;
+                this.y = (height * 0.5) + (Math.random() - 0.5) * 60;
+                
+                this.vx = 0;
+                this.vy = 0;
+                this.color = group.color;
+                this.border = group.border || null;
+                this.mass = this.radius; 
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                if (this.border) {
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = this.border;
+                    ctx.stroke();
+                }
+                ctx.closePath();
+            }
+
+            update() {
+                // 1. Cluster Gravity
+                const targetX = width * this.group.alignX;
+                const targetY = height * 0.5; // Centrati verticalmente
+                const dx = targetX - this.x;
+                const dy = targetY - this.y;
+                
+                this.vx += dx * 0.005;
+                this.vy += dy * 0.005;
+
+                // 2. Mouse Repulsion
+                const distMouseX = this.x - mouse.x;
+                const distMouseY = this.y - mouse.y;
+                const distMouse = Math.sqrt(distMouseX * distMouseX + distMouseY * distMouseY);
+                if (distMouse < mouse.radius) {
+                    const force = (mouse.radius - distMouse) / mouse.radius;
+                    // Gentler push from the mouse
+                    this.vx += (distMouseX / distMouse) * force * 0.2;
+                    this.vy += (distMouseY / distMouse) * force * 0.2;
+                }
+
+                // 3. Friction - Increased significantly to stop chaotic bouncing
+                this.vx *= 0.82;
+                this.vy *= 0.82;
+
+                // Apply velocity
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // 4. Boundary bounce
+                if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -0.5; }
+                if (this.x + this.radius > width) { this.x = width - this.radius; this.vx *= -0.5; }
+                if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -0.5; }
+                if (this.y + this.radius > height) { this.y = height - this.radius; this.vy *= -0.5; }
+            }
+        }
+
+        // Initialize particles
+        groups.forEach(group => {
+            for (let i = 0; i < group.count; i++) {
+                dots.push(new Dot(group));
+            }
+        });
+
+        // Soft collision resolution between dots
+        function resolveCollisions() {
+            for (let i = 0; i < dots.length; i++) {
+                for (let j = i + 1; j < dots.length; j++) {
+                    let dotA = dots[i];
+                    let dotB = dots[j];
+                    
+                    let dx = dotB.x - dotA.x;
+                    let dy = dotB.y - dotA.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    // Aumentato il padding a +4 per separare visivamente meglio i punti piccoli
+                    let minDistance = dotA.radius + dotB.radius + 4; 
+
+                    if (distance < minDistance) {
+                        let angle = Math.atan2(dy, dx);
+                        let targetX = dotA.x + Math.cos(angle) * minDistance;
+                        let targetY = dotA.y + Math.sin(angle) * minDistance;
+                        
+                        // Slightly stiffer collision for less squishiness
+                        let ax = (targetX - dotB.x) * 0.06;
+                        let ay = (targetY - dotB.y) * 0.06;
+
+                        let totalMass = dotA.mass + dotB.mass;
+                        let ratioA = dotB.mass / totalMass;
+                        let ratioB = dotA.mass / totalMass;
+
+                        dotA.vx -= ax * ratioA;
+                        dotA.vy -= ay * ratioA;
+                        dotB.vx += ax * ratioB;
+                        dotB.vy += ay * ratioB;
+                    }
+                }
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            resolveCollisions();
+
+            // Draw smaller dots last so they don't get hidden behind massive ones
+            const sortedDots = [...dots].sort((a, b) => b.radius - a.radius);
+
+            sortedDots.forEach(dot => {
+                dot.update();
+                dot.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
