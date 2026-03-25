@@ -345,17 +345,38 @@
                     .attr("d", path)
                     .attr("class", "map-region");
 
+                // Funzione per verificare se un punto lat/lon è dentro l'Italia
+                function isPointInItaly(point) {
+                    return italyGeoJSON.features.some(feature => d3.geoContains(feature, point));
+                }
+
                 const centers = [];
                 
-                for(let i=0; i<80; i++) {
-                    centers.push([ 7.5 + Math.random() * 5, 44.5 + Math.random() * 1.5 ]);
+                // 1. Alta concentrazione al Nord (Piemonte, Lombardia, Veneto, Emilia)
+                let countNord = 0;
+                while(countNord < 80) {
+                    // Genera nel nord indicativo: lon 7-14, lat 43.5-47
+                    let pt = [ 7 + Math.random() * 7, 43.5 + Math.random() * 3.5 ];
+                    if(isPointInItaly(pt)) { centers.push(pt); countNord++; }
                 }
-                for(let i=0; i<30; i++) {
-                    centers.push([ 12.5 + Math.random() * 3, 37 + Math.random() * 1.5 ]);
+
+                // 2. Concentrazione nei punti di sbarco (Sicilia, Calabria Sud)
+                let countSud = 0;
+                while(countSud < 30) {
+                    // Genera sud/isole: lon 12-18, lat 36.5-39.5
+                    let pt = [ 12 + Math.random() * 6, 36.5 + Math.random() * 3 ];
+                    if(isPointInItaly(pt)) { centers.push(pt); countSud++; }
                 }
-                for(let i=0; i<15; i++) {
-                    centers.push([ 11 + Math.random() * 5, 39.5 + Math.random() * 4 ]);
+
+                // 3. Pochissimi centri nel Centro-Sud peninsulare (il "deserto")
+                let countCentro = 0;
+                while(countCentro < 15) {
+                    // Genera centro/sud: lon 10-16, lat 39.5-44
+                    let pt = [ 10 + Math.random() * 6, 39.5 + Math.random() * 4.5 ];
+                    if(isPointInItaly(pt)) { centers.push(pt); countCentro++; }
                 }
+
+                // Aggiungiamo Roma e Milano fissi per realismo, verificando non serva geoContains perché noti
                 centers.push([12.49, 41.90], [12.5, 41.8], [9.19, 45.46], [9.2, 45.5]);
 
                 svg.append("g")
