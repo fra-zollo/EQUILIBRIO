@@ -228,27 +228,27 @@
 
         <!-- D3 Map Container -->
         <div class="w-full bg-[#fbfbfd] border-y border-gray-200 my-8 py-8 md:py-16 flex justify-center">
-            <!-- Aggiunto questo contenitore "max-w-6xl relative" per tenere bloccata la scritta -->
+            <!-- Contenitore "max-w-6xl relative" per tenere allineata la mappa e il testo -->
             <div class="w-full max-w-6xl relative px-6 md:px-12 flex flex-col items-center">
                 
-                <!-- Spostata la scritta a "top-0" e "left-6 md:left-12" relativa al contenitore bloccato -->
-                <div class="absolute top-0 left-6 md:left-12 max-w-[250px] z-10 hidden md:block text-left">
+                <!-- Testo descrittivo mappa: statico e sopra la mappa su mobile, di lato con posizione assoluta su desktop -->
+                <div class="w-full md:absolute md:top-0 md:left-6 lg:left-12 md:max-w-[250px] z-10 text-left mb-6 md:mb-0">
                     <h3 class="font-bold text-lg mb-2">Mappa dei Centri</h3>
                     <p class="text-sm text-gray-500">Ogni punto rappresenta un centro di accoglienza, sportello legale o hub di integrazione registrato.</p>
                 </div>
                 
                 <!-- SVG dove D3 disegnerà la mappa -->
-                <svg id="italy-map" class="w-full max-w-3xl h-[60vh] md:h-[70vh]" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid meet"></svg>
+                <svg id="italy-map" class="w-full max-w-3xl h-[50vh] md:h-[70vh]" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid meet"></svg>
                 
-                <!-- Legenda Mappa -->
-                <div class="flex items-center gap-6 mt-8">
+                <!-- Legenda Mappa (modificata per andare a capo dolcemente su mobile) -->
+                <div class="flex flex-wrap justify-center items-center gap-4 md:gap-6 mt-6 md:mt-8">
                     <div class="flex items-center gap-2">
                         <div class="w-3 h-3 rounded-full bg-[#1d1d1f] opacity-80"></div>
-                        <span class="text-xs font-bold text-gray-600 uppercase tracking-widest">Centro attivo</span>
+                        <span class="text-[10px] md:text-xs font-bold text-gray-600 uppercase tracking-widest">Centro attivo</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 rounded bg-[#e5e5ea] border border-white"></div>
-                        <span class="text-xs font-bold text-gray-600 uppercase tracking-widest">Aree analizzate</span>
+                        <span class="text-[10px] md:text-xs font-bold text-gray-600 uppercase tracking-widest">Aree analizzate</span>
                     </div>
                 </div>
             </div>
